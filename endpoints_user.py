@@ -54,15 +54,11 @@ def get_all_user(db: Session = Depends(get_db), token: str = Depends(oauth2_sche
 @router.get("/getuserbyid/{id}")
 def get_user(id:int,db:Session=Depends(get_db),token:str=Depends(oauth2_schema)):
     payload = verify_token(token)
-    payload = db.query(User).filter(User.email == payload["email"]).first()
     if payload:
-        if payload.role == "admin":
             try:
                 return get_user_byid(db, id)
             except Exception as e:
                 raise HTTPException(status_code=400,detail=str(e))
-        else:
-            raise HTTPException(status_code=403, detail="Nur Admins dürfen alle Benutzer sehen")
     else:
         raise HTTPException(status_code=403, detail="You don't have access.")
 

@@ -25,7 +25,7 @@ oauth2_schema = OAuth2PasswordBearer(tokenUrl="login")
 
 Secret_key = "elmar123"
 Algorithm = "HS256"
-Access_Token_Expire_Minute = 30
+Access_Token_Expire_Minute = 120
 
 
 def create_token(data:dict,expires_delta: Optional[timedelta] = None):
@@ -65,7 +65,15 @@ def login(customer: OAuth2PasswordRequestForm = Depends(), db: Session = Depends
     access_token_expires = timedelta(minutes=Access_Token_Expire_Minute)
     access_token = create_token(data={"sub": customer.username, "role": user.role}
                                 ,expires_delta=access_token_expires)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.ID,
+            "email": user.email,
+            "role": user.role
+        }
+    }
 
 
 

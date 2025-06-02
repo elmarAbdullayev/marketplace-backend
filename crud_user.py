@@ -26,7 +26,16 @@ def get_user(db:Session):
 def get_user_byid(db: Session, user_id: int):
         user =  db.query(User).filter(User.ID == user_id).first() # db.query(User) bedeutet:"Mache eine Datenbank-Abfrage, die alle Daten aus der Tabelle User abfragt."
         if user:
-            return user
+            return {
+                "id": user.ID,
+                "name": user.name,
+                "surname": user.surname,
+                "email": user.email,
+                "number": user.number,
+                "street": user.street,
+                "street_number": user.street_number,
+                "created_at": user.created_at,
+            }
         else:
             raise HTTPException(status_code=400,detail=f"Es gibt kein user mit dieser ID nummber{user_id}")
 
