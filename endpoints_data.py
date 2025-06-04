@@ -12,6 +12,8 @@ from datetime import datetime
 router = APIRouter()
 
 
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -19,9 +21,35 @@ def get_db():
     finally:
         db.close()
 
-
+UPLOAD_DIRECTORY = Path("uploads").resolve()
+UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 @router.get("/getdata/")
 def get_data(db: Session = Depends(get_db)):
+    image_urls = []
+    try:
+        # Überprüfe, ob das Verzeichnis existiert
+        if not UPLOAD_DIRECTORY.is_dir():
+            raise HTTPException(status_code=404, detail="Uploads directory not found")
+
+        #  gibt alle Dateien und Ordner im angegebenen Verzeichnis zurück – als Iterator von Path-Objekten.
+        for item in UPLOAD_DIRECTORY.iterdir():
+            if item.is_file():  # Nur Dateien betrachten
+                file_extension = item.suffix.lower()  # Dateierweiterung holen (z.B. .jpg)
+
+                # Prüfen, ob es eine erlaubte Bilddatei ist
+                if file_extension in ALLOWED_EXTENSIONS:
+                    # Die öffentliche URL für das Bild erstellen
+                    # Annahme: Dein Webserver ist so konfiguriert, dass /uploads/ auf das UPLOAD_DIRECTORY zeigt
+                    public_url = f"/uploads/{item.name}"
+                    image_urls.append(public_url)
+
+    except Exception as e:
+        print(f"Error reading upload directory: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve image list: {str(e)}")
+
+
+    # Die Liste der Bild-URLs zurückgeben
     return db.query(Data).all()
 
 
@@ -36,8 +64,7 @@ def get_one_data(id: int, db: Session = Depends(get_db), token: str = Depends(oa
 
 
 
-UPLOAD_DIRECTORY = Path("uploads").resolve()
-UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
 @router.post("/savedata")
 def savedata(
         user_id: int = Form(...),
