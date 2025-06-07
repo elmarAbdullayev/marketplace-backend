@@ -6,3 +6,4 @@ python-jose~=3.4.0
 starlette~=0.46.2
 pydantic~=2.11.4
 uvicorn
+python-multipart
