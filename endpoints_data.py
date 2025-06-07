@@ -1,16 +1,22 @@
-import os
-import shutil
-import uuid
-from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from models import Data
 from database_sqlalchemy import SessionLocal
 from auth import oauth2_schema, verify_token
 from datetime import datetime
+import cloudinary
+import cloudinary.uploader
+import os
 
 router = APIRouter()
 
+
+
+cloudinary.config(
+    cloud_name="dxk1cscpy",
+    api_key="526465149644698",
+    api_secret="ZqlUxHOSM9jH2i-01XigMmuFTfY"
+)
 
 
 
@@ -21,36 +27,17 @@ def get_db():
     finally:
         db.close()
 
-UPLOAD_DIRECTORY = Path("uploads").resolve()
-UPLOAD_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 @router.get("/getdata/")
 def get_data(db: Session = Depends(get_db)):
-    image_urls = []
     try:
-        # Überprüfe, ob das Verzeichnis existiert
-        if not UPLOAD_DIRECTORY.is_dir():
-            raise HTTPException(status_code=404, detail="Uploads directory not found")
-
-        #  gibt alle Dateien und Ordner im angegebenen Verzeichnis zurück – als Iterator von Path-Objekten.
-        for item in UPLOAD_DIRECTORY.iterdir():
-            if item.is_file():  # Nur Dateien betrachten
-                file_extension = item.suffix.lower()  # Dateierweiterung holen (z.B. .jpg)
-
-                # Prüfen, ob es eine erlaubte Bilddatei ist
-                if file_extension in ALLOWED_EXTENSIONS:
-                    # Die öffentliche URL für das Bild erstellen
-                    # Annahme: Dein Webserver ist so konfiguriert, dass /uploads/ auf das UPLOAD_DIRECTORY zeigt
-                    public_url = f"/uploads/{item.name}"
-                    image_urls.append(public_url)
-
+        data_list = db.query(Data).all()
+        return data_list
     except Exception as e:
-        print(f"Error reading upload directory: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve image list: {str(e)}")
+        print(f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve data")
 
-
-    # Die Liste der Bild-URLs zurückgeben
-    return db.query(Data).all()
 
 
 @router.get("/getonedata/{id}")
@@ -60,7 +47,6 @@ def get_one_data(id: int, db: Session = Depends(get_db), token: str = Depends(oa
     if payload is None:
         raise HTTPException(status_code=403, detail="Token is expired or invalid")
     return db.query(Data).filter(Data.ID == id).first()
-
 
 
 
@@ -80,63 +66,22 @@ def savedata(
     if payload is None:
         raise HTTPException(status_code=403, detail="Token invalid or expired")
 
-    # Validiere Dateitype
+    # Validiere Dateityp
     ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     file_extension = os.path.splitext(picture.filename)[1].lower()
-
     if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
 
-    # Erstelle das Upload-Verzeichnis mit absoluten Pfad
+    # Datei an Cloudinary senden
     try:
-        # Aktuelles Arbeitsverzeichnis ermitteln
-        current_dir = os.getcwd()
-        abs_upload_dir = os.path.join(current_dir, UPLOAD_DIRECTORY)
-
-        # Verzeichnis erstellen falls es nicht existiert
-        os.makedirs(abs_upload_dir, exist_ok=True)
-        print(f"Upload directory created/verified at: {abs_upload_dir}")
+        picture.file.seek(0)  # File-Pointer sicherheitshalber zurücksetzen
+        upload_result = cloudinary.uploader.upload(picture.file, folder="fastapi_uploads")
+        image_url = upload_result.get("secure_url")
+        if not image_url:
+            raise Exception("Cloudinary did not return a secure URL")
 
     except Exception as e:
-        print(f"Error creating upload directory: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create upload directory: {str(e)}")
-
-    # Generiere einzigartigen Dateinamen
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    filepath = os.path.join(abs_upload_dir, unique_filename)
-
-    print(f"Saving file to: {filepath}")
-
-    # Speichere die Datei
-    try:
-        # File pointer auf Anfang setzen
-        picture.file.seek(0)
-
-        # Datei speichern
-        with open(filepath, "wb") as buffer:
-            content = picture.file.read()
-            buffer.write(content)
-
-        print(f"File saved successfully: {filepath}")
-        print(f"File size: {os.path.getsize(filepath)} bytes")
-
-        # Überprüfen ob Datei existiert
-        if not os.path.exists(filepath):
-            raise Exception("File was not saved properly")
-
-    except Exception as e:
-        print(f"Error saving file: {str(e)}")
-        # Aufräumen bei Fehlern
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-                print("Cleaned up failed file")
-            except:
-                pass
-        raise HTTPException(status_code=500, detail=f"Failed to save image: {str(e)}")
-
-    # URL für den Browser
-    image_public_url = f"/uploads/{unique_filename}"
+        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
 
     # In Datenbank speichern
     try:
@@ -147,7 +92,7 @@ def savedata(
             city=city,
             info=info,
             category=category,
-            picture=image_public_url,
+            picture=image_url,
             created_at=now,
             updated_at=now,
         )
@@ -155,12 +100,10 @@ def savedata(
         db.commit()
         db.refresh(new_data)
 
-        print(f"Data saved to database with ID: {new_data.ID}")
-
         return {
             "status": "success",
             "message": "Advertisement created successfully",
-            "image_url": image_public_url,
+            "image_url": image_url,
             "data": {
                 "id": new_data.ID,
                 "title": new_data.title,
@@ -169,12 +112,4 @@ def savedata(
         }
 
     except Exception as e:
-        print(f"Database error: {str(e)}")
-        # Bei Datenbankfehler die Datei wieder löschen
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-                print("Cleaned up file due to database error")
-            except:
-                pass
         raise HTTPException(status_code=500, detail=f"Failed to save to database: {str(e)}")
