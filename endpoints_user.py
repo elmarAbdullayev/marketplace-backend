@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from fastapi import FastAPI, APIRouter, Depends
 from sqlalchemy.orm import Session
-from crud_user import get_user,create_user,get_user_byid,delete_user,update_user
+from crud_user import get_alle_user,create_user,get_user_byid,delete_user,update_user
 from pydantic import BaseModel, EmailStr
 from database_sqlalchemy import SessionLocal
 from auth import oauth2_schema,verify_token
@@ -44,7 +44,7 @@ def get_all_user(db: Session = Depends(get_db), token: str = Depends(oauth2_sche
     payload = db.query(User).filter(User.email == payload["email"]).first()
     if payload:
         if payload.role == "admin":
-            return get_user(db)
+            return get_alle_user(db)
         else:
             raise HTTPException(status_code=403, detail="Nur Admins dürfen alle Benutzer sehen")
     else:

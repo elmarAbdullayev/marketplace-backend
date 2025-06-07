@@ -17,7 +17,7 @@ class UserCreate(BaseModel):
     role: str = None
 
 
-def get_user(db:Session):
+def get_alle_user(db:Session):
     if db:
         return db.query(User).all()
     else:
