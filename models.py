@@ -10,8 +10,8 @@ class User(Base):
     ID = Column(Integer, primary_key=True, index=True) # bei SQLAlchemy automatisch aktiviert, wenn du primary_key=True bei einem Integer-Feld angibst.
     name = Column(String(20))
     surname = Column(String(20))
-    email = Column(String(40), unique=True, index=True)
-    password = Column(String(30))
+    email = Column(String(60), unique=True, index=True)
+    password = Column(String(100))
     street = Column(String(30))
     street_number = Column(Integer)
     number = Column(String(20))
