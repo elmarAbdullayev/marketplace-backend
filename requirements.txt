@@ -9,3 +9,4 @@ uvicorn
 python-multipart
 email-validator
 cloudinary
+psycopg2
