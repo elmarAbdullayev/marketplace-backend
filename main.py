@@ -11,7 +11,6 @@ from endpoints_data import router as data_router
 from database_sqlalchemy import SessionLocal
 
 if __name__ == "__main__":  # nur wenn direkt ausgeführt
-    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     print("Datenbank und Tabellen wurden erstellt.")
 
