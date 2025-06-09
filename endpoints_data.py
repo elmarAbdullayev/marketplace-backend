@@ -43,10 +43,17 @@ def get_data(db: Session = Depends(get_db)):
 @router.get("/getonedata/{id}")
 def get_one_data(id: int, db: Session = Depends(get_db), token: str = Depends(oauth2_schema)):
     payload = verify_token(token)
-    print("sss", payload)
     if payload is None:
         raise HTTPException(status_code=403, detail="Token is expired or invalid")
     return db.query(Data).filter(Data.ID == id).first()
+
+
+@router.get("/getusersdata/{id}")
+def get_one_data(id: int, db: Session = Depends(get_db), token: str = Depends(oauth2_schema)):
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(status_code=403, detail="Token is expired or invalid")
+    return db.query(Data).filter(Data.user_id == id).all()
 
 
 
