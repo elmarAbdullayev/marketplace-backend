@@ -29,5 +29,6 @@ class Data(Base):
     info = Column(String(250))
     category = Column(String(30))
     picture = Column(String(255))
+    picture_id = Column(String(255))
     created_at = Column(DateTime)
     updated_at = Column(DateTime)

@@ -57,40 +57,54 @@ def get_one_data(id: int, db: Session = Depends(get_db), token: str = Depends(oa
 
 
 
+@router.delete("/deletedata/{id}")
+def delete_data(id: int, db: Session = Depends(get_db), token: str = Depends(oauth2_schema)):
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(status_code=403, detail="Token is expired or invalid")
+    try:
+        data = db.query(Data).filter(Data.ID == id).first()
+        if data:
+            if data.picture_id:
+                cloudinary.uploader.destroy(data.picture_id, invalidate=True)
+            db.delete(data)
+            db.commit()
+            return {"status": "success", "message": "Advertisement deleted successfully"}
+        else:
+            return {"status": "error", "message": "Advertisement not found"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Problem deleting advertisement: {str(e)}")
+
+
 
 @router.post("/savedata")
 def savedata(
-        user_id: int = Form(...),
-        title: str = Form(...),
-        info: str = Form(""),
-        category: str = Form(...),
-        city: str = Form(...),
-        picture: UploadFile = File(...),
-        db: Session = Depends(get_db),
-        token: str = Depends(oauth2_schema)
+    user_id: int = Form(...),
+    title: str = Form(...),
+    info: str = Form(""),
+    category: str = Form(...),
+    city: str = Form(...),
+    picture: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_schema)
 ):
     payload = verify_token(token)
     if payload is None:
         raise HTTPException(status_code=403, detail="Token invalid or expired")
 
-    # Validiere Dateityp
-    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     file_extension = os.path.splitext(picture.filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+    print(file_extension)
 
-    # Datei an Cloudinary senden
     try:
-        picture.file.seek(0)  # File-Pointer sicherheitshalber zurücksetzen
+        picture.file.seek(0)
         upload_result = cloudinary.uploader.upload(picture.file, folder="fastapi_uploads")
         image_url = upload_result.get("secure_url")
-        if not image_url:
-            raise Exception("Cloudinary did not return a secure URL")
-
+        public_id = upload_result.get("public_id")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
 
-    # In Datenbank speichern
     try:
         now = datetime.utcnow()
         new_data = Data(
@@ -100,6 +114,7 @@ def savedata(
             info=info,
             category=category,
             picture=image_url,
+            picture_id=public_id,
             created_at=now,
             updated_at=now,
         )
@@ -120,3 +135,4 @@ def savedata(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save to database: {str(e)}")
+
