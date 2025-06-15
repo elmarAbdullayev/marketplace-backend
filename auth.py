@@ -43,10 +43,18 @@ def create_token(data:dict,expires_delta: Optional[timedelta] = None):
 def verify_token(token: str):
     try:
         payload = jwt.decode(token, Secret_key, algorithms=[Algorithm])
-        user_email: str = payload.get("sub")
-        user_role: str = payload.get("role")
+        user_email = payload.get("sub")
+        user_role = payload.get("role")
+        exp = payload.get("exp")
+
         if user_email is None or user_role is None:
             raise HTTPException(status_code=401, detail="Ungültiges Token")
+
+        now_seconds = datetime.now().timestamp()
+
+        if exp is None or now_seconds > int(exp):
+            raise HTTPException(status_code=401, detail="Token ist abgelaufen")
+
         return {"email": user_email, "role": user_role}
     except JWTError:
         raise HTTPException(status_code=401, detail="Token-Fehler")

@@ -37,6 +37,11 @@ def create_new_user(user: UserCreate, db: Session =Depends(get_db)): # Depends(g
         raise HTTPException(status_code = 400,detail=str(e))
 
 
+@router.get("/test")
+def test():
+    print("test")
+
+
 
 @router.get("/getuser")
 def get_all_user(db: Session = Depends(get_db), token: str = Depends(oauth2_schema)):

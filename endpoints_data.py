@@ -4,6 +4,8 @@ from models import Data
 from database_sqlalchemy import SessionLocal
 from auth import oauth2_schema, verify_token
 from datetime import datetime
+from fastapi import Body
+
 import cloudinary
 import cloudinary.uploader
 import os
@@ -66,6 +68,7 @@ def delete_data(id: int, db: Session = Depends(get_db), token: str = Depends(oau
         data = db.query(Data).filter(Data.ID == id).first()
         if data:
             if data.picture_id:
+                print(data.picture_id)
                 cloudinary.uploader.destroy(data.picture_id, invalidate=True)
             db.delete(data)
             db.commit()
@@ -74,6 +77,50 @@ def delete_data(id: int, db: Session = Depends(get_db), token: str = Depends(oau
             return {"status": "error", "message": "Advertisement not found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Problem deleting advertisement: {str(e)}")
+
+
+
+@router.put("/putdata/{id}")
+def put_data(
+    id: int,
+    data: dict = Body(...),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_schema)
+):
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(status_code=403, detail="Token is expired or invalid")
+    try:
+
+        key = data.get("title")
+        value = data.get("value")
+        item_id = data.get("itemId")
+        print(f"Empfangener Schlüssel: {key}, Wert: {value}") # Verbessertes Logging
+        my_data = db.query(Data).filter(Data.user_id == id, Data.ID == item_id).first()
+
+        if not my_data:
+            raise HTTPException(status_code=404, detail="Data not found")
+
+        print(f"Prüfe, ob das Data-Objekt das Attribut '{key}' hat.") # Zusätzliches Logging
+        if not hasattr(my_data, key):
+            # Dies ist der wahrscheinlichste Punkt, der einen Fehler verursachen könnte.
+            # Wenn der Schlüssel (z.B. "titel") nicht in Ihrem 'Data'-Modell existiert,
+            # wird dieser Fehler ausgelöst.
+            print(f"Data-Objekt hat Attribut '{key}' NICHT.") # Bestätigung des Fehlers
+            raise HTTPException(status_code=400, detail="Ungültiges Feld")
+
+        print(f"Setze Attribut '{key}' auf '{value}'.") # Zusätzliches Logging
+        setattr(my_data ,key, value)
+        db.commit()
+        print("Commit erfolgreich!") # Bestätigung
+
+        return {"status": "success", "message": "Advertisement updated successfully"}
+    except Exception as e:
+        # Dies fängt den 500er-Fehler ab und gibt die tatsächliche Fehlermeldung aus.
+        # Dies ist entscheidend für die Fehlersuche!
+        print(f"Eine Ausnahme ist aufgetreten: {e}")
+        raise HTTPException(status_code=500, detail=f"Problem updating advertisement: {str(e)}")
+
 
 
 
