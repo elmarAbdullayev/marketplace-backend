@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta, datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,7 +24,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") # bcrypt heiss
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="login")
 
-Secret_key = "elmar123"
+Secret_key = os.getenv("SECRET_KEY")  # set in the environment (see .env.example)
 Algorithm = "HS256"
 Access_Token_Expire_Minute = 120
 
