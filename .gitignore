@@ -1,0 +1,15 @@
+# Environment variables (never commit secrets)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Local SQLite database
+*.db
