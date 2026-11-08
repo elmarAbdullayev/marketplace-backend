@@ -1,7 +1,10 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql://marketplace_db_23a6_user:J08kKwtV5Aah6HYgnSBVVnjbMsxbQpAM@dpg-d12not3uibrs73fdqgv0-a.oregon-postgres.render.com/marketplace_db_23a6"
+# Set DATABASE_URL in the environment (see .env.example)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
 
